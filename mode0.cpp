@@ -106,6 +106,51 @@ void redrawMap(int xPos,int yPos) {
     yPos - CURSOR_SIZE/2, CURSOR_SIZE, CURSOR_SIZE);
 }
 
+// check if the map should be moved or not depending on if the cursor
+// is at the edge and where we are on the map
+void checkMoveMap() {
+	// check if the map has moved
+	bool hasMoved = false;
+	// if the cursor is at the top of LCD display, see if we can move the map
+	if ((cursorY < CURSOR_SIZE/2) && (yegMiddleY > 0)) {
+	hasMoved = true;
+	// change the point to redraw the map
+    yegMiddleY = yegMiddleY - DISPLAY_HEIGHT;
+
+    // if cursor is at bottom of LCD display
+ 	} else if ((cursorY > (DISPLAY_HEIGHT - CURSOR_SIZE/2)) 
+                && (yegMiddleY < (YEG_SIZE - DISPLAY_HEIGHT))) {
+
+ 	hasMoved = true;
+    yegMiddleY = yegMiddleY + DISPLAY_HEIGHT;
+   
+    // if cursor is at left of LCD display
+  	} else if ((cursorX < CURSOR_SIZE/2) && (yegMiddleX > 0)) {
+
+  	hasMoved = true;
+    yegMiddleX = yegMiddleX - (DISPLAY_WIDTH - 60);
+
+    // if cursor is at right of LCD display
+  	} else if ((cursorX > (DISPLAY_WIDTH - 60 - CURSOR_SIZE/2)) 
+  					&& (yegMiddleX < (YEG_SIZE - DISPLAY_WIDTH - 60))) {
+
+	hasMoved = true;
+    yegMiddleX = yegMiddleX + (DISPLAY_WIDTH - 60);
+  
+  	}
+
+  	// if we moved, then move the map if possible
+  	if (hasMoved) {
+  		// constrain the coordinates to 0 and the maximum size of the YEG 
+  		// picture size subtracting the size of the LCD screen
+  		yegMiddleX = constrain(yegMiddleX, 0, (YEG_SIZE - DISPLAY_WIDTH - 60));
+  		yegMiddleY = constrain(yegMiddleY, 0, (YEG_SIZE - DISPLAY_HEIGHT));
+  		lcd_image_draw(&yegImage, &tft, yegMiddleX, yegMiddleY,
+                 0, 0, DISPLAY_WIDTH - 60, DISPLAY_HEIGHT);
+  	}
+}
+
+
 void processJoystick() {
   int xVal = analogRead(JOY_HORIZ);
   int yVal = analogRead(JOY_VERT);
@@ -148,6 +193,9 @@ void processJoystick() {
       cursorX += 5;
     }
   }
+
+  // function for checking if the map can and should be shifted or not 
+  checkMoveMap();
 
   // constrain x and y cursor positions to the given map.
   // hard-coded in -1 for both the upper-bounds of cursorX and Y due to 
