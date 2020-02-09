@@ -94,9 +94,87 @@ void setup() {
 	redrawCursor(TFT_RED);
 }
 
+void redrawCursor(uint16_t colour) {
+  tft.fillRect(cursorX - CURSOR_SIZE/2, cursorY - CURSOR_SIZE/2,
+               CURSOR_SIZE, CURSOR_SIZE, colour);
+}
+
+// redraw the map using the cursor and edmonton image positions
+void redrawMap(int xPos,int yPos) {
+  lcd_image_draw(&yegImage, &tft, yegMiddleX + xPos - CURSOR_SIZE/2, 
+    yegMiddleY + yPos - CURSOR_SIZE/2, xPos - CURSOR_SIZE/2, 
+    yPos - CURSOR_SIZE/2, CURSOR_SIZE, CURSOR_SIZE);
+}
+
+void processJoystick() {
+  int xVal = analogRead(JOY_HORIZ);
+  int yVal = analogRead(JOY_VERT);
+  int buttonVal = digitalRead(JOY_SEL);
+
+  // get the initial cursor positions 
+  int icursorX = cursorX;
+  int icursorY = cursorY;
+
+  // now move the cursor
+  if (yVal < JOY_CENTER - JOY_DEADZONE) {
+    // if the joystick is moved far enough, the cursor will go faster
+    if (yVal > JOY_CENTER - JOY_DEADZONE - 350) {
+      cursorY -= 1; 
+    } else {
+      cursorY -= 5;
+    }
+  }
+  else if (yVal > JOY_CENTER + JOY_DEADZONE) {
+    if (yVal < JOY_CENTER + JOY_DEADZONE + 350) {
+      cursorY += 1; 
+    } else {
+      cursorY += 5;
+    }
+  }
+
+  // remember the x-reading increases as we push left
+  if (xVal > JOY_CENTER + JOY_DEADZONE) {
+    if (xVal < JOY_CENTER + JOY_DEADZONE + 350) {
+      cursorX -= 1; 
+    } else {
+      cursorX -= 5;
+    }
+
+  }
+  else if (xVal < JOY_CENTER - JOY_DEADZONE) {
+    if (xVal > JOY_CENTER - JOY_DEADZONE - 350) {
+      cursorX += 1; 
+    } else {
+      cursorX += 5;
+    }
+  }
+
+  // constrain x and y cursor positions to the given map.
+  // hard-coded in -1 for both the upper-bounds of cursorX and Y due to 
+  // int division of CURSOR_SIZE not giving the exact pixels needed
+  cursorX = constrain(cursorX, CURSOR_SIZE/2, 
+    DISPLAY_WIDTH - 61 - CURSOR_SIZE/2);
+  cursorY = constrain(cursorY, CURSOR_SIZE/2, 
+  	DISPLAY_HEIGHT - CURSOR_SIZE/2 - 1);
+
+  // check if cursor has moved. If it has, redraw the map.
+  if ((icursorX != cursorX) or (icursorY != cursorY)) {
+    redrawMap(icursorX, icursorY);
+
+  } 
+
+  // redraw the cursor now
+  redrawCursor(TFT_RED);
+
+  delay(20);
+}
+
 int main() {
 	setup();
 
+  while (true) {
+    processJoystick();
+  }
 
 	Serial.end();
 	return 0;
