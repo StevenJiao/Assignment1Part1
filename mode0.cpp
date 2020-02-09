@@ -147,10 +147,13 @@ void checkMoveMap() {
   		yegMiddleY = constrain(yegMiddleY, 0, (YEG_SIZE - DISPLAY_HEIGHT));
   		lcd_image_draw(&yegImage, &tft, yegMiddleX, yegMiddleY,
                  0, 0, DISPLAY_WIDTH - 60, DISPLAY_HEIGHT);
+  		
+  		cursorX = (DISPLAY_WIDTH - 60)/2;
+  		cursorY = DISPLAY_HEIGHT/2;
   	}
 }
 
-
+// main function to run everything; processes the movement of joystick
 void processJoystick() {
   int xVal = analogRead(JOY_HORIZ);
   int yVal = analogRead(JOY_VERT);
@@ -220,9 +223,9 @@ void processJoystick() {
 int main() {
 	setup();
 
-  while (true) {
+	while (true) {
     processJoystick();
-  }
+	}
 
 	Serial.end();
 	return 0;
