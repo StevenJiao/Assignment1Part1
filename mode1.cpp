@@ -61,6 +61,13 @@ TouchScreen ts = TouchScreen(XP, YP, XM, YM, 300);
 // different than SD
 Sd2Card card;
 
+// Stores most recent block read from the SD card and it's number
+restaurant storeBlock[8];
+uint32_t recentBlockNum;
+
+// Stores selected restaurant
+int selectedRest = 0;
+
 // Stores restaurant lat, lon, and rating
 struct restaurant { 
     int32_t lat; // Stored in 1/100,000 degrees
@@ -78,39 +85,19 @@ struct RestDist {
 RestDist rest_dist[NUM_RESTAURANTS];
 
 void updateDist() {
+    // Calculates Manhatten distance d((x1,y1),(x2,y2)) = |x1-x2| + |y1-y2|
     for (uint16_t i = 0; i < NUM_RESTAURANTS; i++) {
-        // d((x1,y1),(x2,y2)) = |x1-x2| + |y1-y2|
-        int dx = <mode0.cpp> cursorX - restaurant.lat[i];
+        int dx = 0 - restaurant.lat[i];
         if (dx < 0) {
             dx = 0 - dx;
         }
-        int dy = <mode0.cpp> cursorY - restaurant.lon[i];
+        int dy = 0 - restaurant.lon[i];
         if (dy < 0) {
             dx = 0 - dy;
         }
-        int dist = dx + dy;
-        RestDist rest_dist[i] == {dist, i};
+        int mDist = dx + dy;
+        RestDist rest_dist[i] == {mDist, i};
     }
-}
-
-// Stores most recent block read from the SD card and it's number
-restaurant storeBlock[8];
-uint32_t recentBlockNum;
-
-// Stores selected restaurant
-int selectedRest = 0;
-
-// Displays initial restaurant list
-void initialDisplay() {
-    tft.setRotation(1);
-    tft.fillScreen(0x0000);
-    tft.setTextSize(2);
-    tft.setTextWrap(false);
-    tft.setCursor(0,0)
-
-    selectedRest = 0;
-    updateDist();
-    updateDisplay();
 }
 
 void updateDisplay() {
@@ -129,6 +116,19 @@ void updateDisplay() {
         tft.print("\n");
     }
     tft.print("\n");
+}
+
+// Displays initial restaurant list
+void initialDisplay() {
+    tft.setRotation(1);
+    tft.fillScreen(0x0000);
+    tft.setTextSize(2);
+    tft.setTextWrap(false);
+    tft.setCursor(0,0)
+
+    selectedRest = 0;
+    updateDist();
+    updateDisplay();
 }
 
 void setup() {
