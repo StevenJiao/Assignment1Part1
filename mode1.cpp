@@ -18,7 +18,7 @@ Assignment 1 Part 2: Mode 1
 #define SD_CS 10
 #define JOY_VERT  A9 // should connect A9 to pin VRx
 #define JOY_HORIZ A8 // should connect A8 to pin VRy
-#define JOY_SEL   53
+#define JOY_SEL   53 // Digital pin 53 should connect to pin SW
 
 // physical dimensions of the tft display (# of pixels)
 #define DISPLAY_WIDTH  480
@@ -36,6 +36,14 @@ Assignment 1 Part 2: Mode 1
 
 #define REST_START_BLOCK 4000000
 #define NUM_RESTAURANTS 1066
+
+// These constants are for the 2048 by 2048 map.
+#define MAP_WIDTH 2048
+#define MAP_HEIGHT 2048
+#define LAT_NORTH 53618581
+#define LAT_SOUTH 53409531
+#define LON_WEST -113686521
+#define LONG_EAST -113334961
 
 // calibration data for the touch screen, obtained from documentation
 // the minimum/maximum possible readings from the touch point
@@ -61,10 +69,6 @@ TouchScreen ts = TouchScreen(XP, YP, XM, YM, 300);
 // different than SD
 Sd2Card card;
 
-// Stores most recent block read from the SD card and it's number
-restaurant storeBlock[8];
-uint32_t recentBlockNum;
-
 // Stores selected restaurant
 int selectedRest = 0;
 
@@ -84,14 +88,38 @@ struct RestDist {
 
 RestDist rest_dist[NUM_RESTAURANTS];
 
+// Stores most recent block read from the SD card and it's number
+restaurant storeBlock[8];
+uint32_t recentBlockNum;
+
+// These functions convert between x/y map poisition and lat/lon
+// (and vice versa.)
+int32_t x_to_lon(int16_t x) {
+    return map(x, 0, MAP_WIDTH, LON_WEST, LONG_EAST);
+}
+
+int32_t y_to_lat(int16_t y) {
+    return map(y, 0, MAP_WIDTH, LAT_NORTH, LAT_SOUTH);
+}
+
+int16_t lon_to_x(int32_t lon) {
+    return map(lon, LON_WEST, LONG_EAST, 0, MAP_WIDTH);
+}
+
+int16_t lat_to_y(int32_t lat) {
+    return map(lat, LAT_NORTH, LAT_SOUTH, 0, MAP_WIDTH);
+}
+
+// Calculates Manhatten distance d((x1,y1),(x2,y2)) = |x1-x2| + |y1-y2|
 void updateDist() {
-    // Calculates Manhatten distance d((x1,y1),(x2,y2)) = |x1-x2| + |y1-y2|
-    for (uint16_t i = 0; i < NUM_RESTAURANTS; i++) {
-        int dx = <mode0.cpp> cursorX - restaurant.lon[i];
+    for (uint16_t i = 0; i < NUM_RESTAURANTS-1; i++) {
+        // replace 111 with <mode0.cpp> cursorX
+        int dx = 111 - lon_to_x(restaurant.lon[i]);
         if (dx < 0) {
             dx = 0 - dx;
         }
-        int dy = <mode0.cpp> cursorY - restaurant.lat[i];
+        // replace 222 with <mode0.cpp> cursorY
+        int dy = 222 - lat_to_y(restaurant.lat[i]);
         if (dy < 0) {
             dx = 0 - dy;
         }
@@ -101,7 +129,7 @@ void updateDist() {
 }
 
 void updateDisplay() {
-    for (int16_t i = 0; i < 21; i++) {
+    for (int16_t i = 0; i < 20; i++) {
         Restaurant r;
         getRestaurant(restDist[i].index, &r);
         if (i != selectedRest) {
