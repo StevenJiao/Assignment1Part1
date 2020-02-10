@@ -87,6 +87,22 @@ RestDist rest_dist[NUM_RESTAURANTS];
 restaurant storeBlock[8];
 uint32_t recentBlockNum;
 
+// swap function for insertion sort
+void swap(int* a, int* b) {
+    int temp = *a;
+    *a = *b;
+    *b = temp;
+}
+
+// insertion sort for sorting the restaurant struct
+void iSort(RestDist* a[], int n) {
+    for (int i = 1; i < n; i++) {
+        for (int j = i; j > 0; j--) {
+            swap(a[j], a[j-1]);
+        }
+    }
+}
+
 // These functions convert between x/y map poisition and lat/lon
 // (and vice versa.)
 int32_t x_to_lon(int16_t x) {
@@ -141,7 +157,8 @@ void sortRest() {
         rest_dist[i].index = i;
     }
 
-    // insertion sort
+    // test if this works**
+    iSort(rest_dist, NUM_RESTAURANTS-1);
 }
 
 // Stores selected restaurant
