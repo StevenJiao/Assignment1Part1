@@ -152,7 +152,7 @@ void initialDisplay() {
     tft.fillScreen(0x0000);
     tft.setTextSize(2);
     tft.setTextWrap(false);
-    tft.setCursor(0,0)
+    tft.setCursor(0,0);
 
     selectedRest = 0;
     updateDist();
