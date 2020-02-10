@@ -8,6 +8,7 @@ Acknowledgements: N/A
 Assignment 1 Part 2: Mode 1 
 
 */
+
 #include <Arduino.h>
 #include <Adafruit_GFX.h>
 #include <MCUFRIEND_kbv.h>
@@ -60,10 +61,27 @@ TouchScreen ts = TouchScreen(XP, YP, XM, YM, 300);
 // different than SD
 Sd2Card card;
 
+// Stores restaurant lat, lon, and rating
+struct restaurant { 
+    int32_t lat; // Stored in 1/100,000 degrees
+    int32_t lon; // Stored in 1/100,000 degrees
+    uint8_t rating; // 0-10; [2 = 1 star, 10 = 5 stars]
+    char name[55]; // already null terminated on the SD card
+} restaurant;
+
 // Stores restaurant index and distance to cursor
 struct RestDist {
     uint16_t index; // index of restaurant from 0 to NUM_RESTAURANTS-1
     uint16_t dist; // Manhattan distance to cursor position
+};
+
+RestDist rest_dist[NUM_RESTAURANTS];
+
+void updateDist() {
+    for (uint16_t i = 0; i < NUM_RESTAURANTS; i++) {
+        // d((x1,y1),(x2,y2)) = |x1-x2| + |y1-y2|
+        
+    }
 }
 
 // Stores most recent block read from the SD card and it's number
@@ -74,14 +92,15 @@ uint32_t recentBlockNum;
 int selectedRest = 0;
 
 // Displays initial restaurant list
-void updateDisplay() {
-    tft.fillScreen(0x0000);
+void initialDisplay() {
     tft.setRotation(1);
+    tft.fillScreen(0x0000);
     tft.setTextSize(2);
     tft.setTextWrap(false);
     tft.setCursor(0,0)
 
     selectedRest = 0;
+    updateDist();
     updateDisplay();
 }
 
