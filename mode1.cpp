@@ -114,12 +114,12 @@ int16_t lat_to_y(int32_t lat) {
 void updateDist() {
     for (uint16_t i = 0; i < NUM_RESTAURANTS-1; i++) {
         // replace 111 with <mode0.cpp> cursorX
-        int dx = 111 - lon_to_x(restaurant.lon);
+        int dx = 111 - lon_to_x(storeBlock[recentBlockNum].lon);
         if (dx < 0) {
             dx = 0 - dx;
         }
         // replace 222 with <mode0.cpp> cursorY
-        int dy = 222 - lat_to_y(restaurant.lat);
+        int dy = 222 - lat_to_y(storeBlock[recentBlockNum].lat);
         if (dy < 0) {
             dx = 0 - dy;
         }
