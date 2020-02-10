@@ -87,11 +87,11 @@ RestDist rest_dist[NUM_RESTAURANTS];
 void updateDist() {
     // Calculates Manhatten distance d((x1,y1),(x2,y2)) = |x1-x2| + |y1-y2|
     for (uint16_t i = 0; i < NUM_RESTAURANTS; i++) {
-        int dx = 0 - restaurant.lat[i];
+        int dx = <mode0.cpp> cursorX - restaurant.lon[i];
         if (dx < 0) {
             dx = 0 - dx;
         }
-        int dy = 0 - restaurant.lon[i];
+        int dy = <mode0.cpp> cursorY - restaurant.lat[i];
         if (dy < 0) {
             dx = 0 - dy;
         }
