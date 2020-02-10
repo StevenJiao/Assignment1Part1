@@ -5,7 +5,7 @@ CCID: 1442672, 1429548
 CMPUT 275, Winter 2019
 Date: 02/08/2020
 Acknowledgements: N/A
-Assignment 1 Part 2: Mode 1 
+Assignment 1 Part 2: Mode 1
 
 */
 
@@ -78,7 +78,7 @@ struct restaurant {
     int32_t lon; // Stored in 1/100,000 degrees
     uint8_t rating; // 0-10; [2 = 1 star, 10 = 5 stars]
     char name[55]; // already null terminated on the SD card
-} restaurant;
+};
 
 // Stores restaurant index and distance to cursor
 struct RestDist {
@@ -114,24 +114,38 @@ int16_t lat_to_y(int32_t lat) {
 void updateDist() {
     for (uint16_t i = 0; i < NUM_RESTAURANTS-1; i++) {
         // replace 111 with <mode0.cpp> cursorX
-        int dx = 111 - lon_to_x(restaurant.lon[i]);
+        int dx = 111 - lon_to_x(restaurant.lon);
         if (dx < 0) {
             dx = 0 - dx;
         }
         // replace 222 with <mode0.cpp> cursorY
-        int dy = 222 - lat_to_y(restaurant.lat[i]);
+        int dy = 222 - lat_to_y(restaurant.lat);
         if (dy < 0) {
             dx = 0 - dy;
         }
         int mDist = dx + dy;
-        RestDist rest_dist[i] == {mDist, i};
+        RestDist rest_dist[i] = {mDist, i};
     }
+}
+
+// Reads restaurant data from SD card
+void getRestaurant(int restIndex, restaurant* restPtr) {
+    uint32_t blockNum = REST_START_BLOCK + restIndex/8;
+
+    if (blockNum != recentBlockNum) {
+        recentBlockNum = blockNum;
+        while (!card.readBlock(blockNum, (uint8_t*) storeBlock)) {
+            Serial.println("Read block failed, trying again.");
+        }
+    }
+
+    *restPtr = storeBlock[restIndex % 8];
 }
 
 void updateDisplay() {
     for (int16_t i = 0; i < 20; i++) {
-        Restaurant r;
-        getRestaurant(restDist[i].index, &r);
+        restaurant r;
+        getRestaurant(rest_dist[i].index, &r);
         if (i != selectedRest) {
             // white text on black background
             tft.setTextColor(0xFFFF, 0x0000);
@@ -178,20 +192,6 @@ void setup() {
     else {
         Serial.println("OK!");
     }
-}
-
-// Reads restaurant data from SD card
-void getRestaurant(int restIndex, restaurant* restPtr) {
-    uint32_t blockNum = REST_START_BLOCK + restIndex/8;
-
-    if (blockNum != recentBlockNum) {
-        recentBlockNum = blockNum;
-        while (!card.readBlock(blockNum, (uint8_t*) storeBlock)) {
-            Serial.println("Read block failed, trying again.");
-        }
-    }
-
-    *restPtr = storeBlock[restIndex % 8];
 }
 
 // Checks if joystick is used
