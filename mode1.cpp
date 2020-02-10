@@ -80,7 +80,16 @@ RestDist rest_dist[NUM_RESTAURANTS];
 void updateDist() {
     for (uint16_t i = 0; i < NUM_RESTAURANTS; i++) {
         // d((x1,y1),(x2,y2)) = |x1-x2| + |y1-y2|
-        
+        int dx = <mode0.cpp> cursorX - restaurant.lat[i];
+        if (dx < 0) {
+            dx = 0 - dx;
+        }
+        int dy = <mode0.cpp> cursorY - restaurant.lon[i];
+        if (dy < 0) {
+            dx = 0 - dy;
+        }
+        int dist = dx + dy;
+        RestDist rest_dist[i] == {dist, i};
     }
 }
 
