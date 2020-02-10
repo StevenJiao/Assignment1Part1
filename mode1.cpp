@@ -1,12 +1,10 @@
 /*
-
 Name: Steven Jiao, Tyler Mah
 CCID: 1442672, 1429548
 CMPUT 275, Winter 2019
 Date: 02/08/2020
 Acknowledgements: N/A
 Assignment 1 Part 2: Mode 1
-
 */
 
 #include <Arduino.h>
@@ -69,9 +67,6 @@ TouchScreen ts = TouchScreen(XP, YP, XM, YM, 300);
 // different than SD
 Sd2Card card;
 
-// Stores selected restaurant
-int selectedRest = 0;
-
 // Stores restaurant lat, lon, and rating
 struct restaurant { 
     int32_t lat; // Stored in 1/100,000 degrees
@@ -110,24 +105,6 @@ int16_t lat_to_y(int32_t lat) {
     return map(lat, LAT_NORTH, LAT_SOUTH, 0, MAP_WIDTH);
 }
 
-// Calculates Manhatten distance d((x1,y1),(x2,y2)) = |x1-x2| + |y1-y2|
-void updateDist() {
-    for (uint16_t i = 0; i < NUM_RESTAURANTS-1; i++) {
-        // replace 111 with <mode0.cpp> cursorX
-        int dx = 111 - lon_to_x(storeBlock[recentBlockNum].lon);
-        if (dx < 0) {
-            dx = 0 - dx;
-        }
-        // replace 222 with <mode0.cpp> cursorY
-        int dy = 222 - lat_to_y(storeBlock[recentBlockNum].lat);
-        if (dy < 0) {
-            dx = 0 - dy;
-        }
-        int mDist = dx + dy;
-        RestDist rest_dist[i] = {mDist, i};
-    }
-}
-
 // Reads restaurant data from SD card
 void getRestaurant(int restIndex, restaurant* restPtr) {
     uint32_t blockNum = REST_START_BLOCK + restIndex/8;
@@ -142,9 +119,39 @@ void getRestaurant(int restIndex, restaurant* restPtr) {
     *restPtr = storeBlock[restIndex % 8];
 }
 
+// Sorts restaurants by closest
+void sortRest() {
+    restaurant r;
+    for (int16_t i = 0; i < NUM_RESTAURANTS-1; i++) {
+        getRestaurant(i, &r);
+
+        // Calculates Manhatten distance d((x1,y1),(x2,y2)) = |x1-x2| + |y1-y2|
+        // replace 111 with <mode0.cpp> cursorX
+        int dx = 111 - lon_to_x(r.lon);
+        if (dx < 0) {
+            dx = 0 - dx;
+        }
+        // replace 222 with <mode0.cpp> cursorY
+        int dy = 222 - lat_to_y(r.lat);
+        if (dy < 0) {
+            dx = 0 - dy;
+        }
+        int mDist = dx + dy;
+        rest_dist[i].dist = mDist;
+        rest_dist[i].index = i;
+    }
+
+    // insertion sort
+}
+
+// Stores selected restaurant
+int selectedRest = 0;
+
+// Displays the restaurant list
 void updateDisplay() {
-    for (int16_t i = 0; i < 20; i++) {
-        restaurant r;
+    restaurant r;
+    tft.setCursor(0,0);
+    for (int16_t i = 0; i < 22; i++) {
         getRestaurant(rest_dist[i].index, &r);
         if (i != selectedRest) {
             // white text on black background
@@ -155,9 +162,8 @@ void updateDisplay() {
             tft.setTextColor(0x0000, 0xFFFF);
         }
         tft.print(r.name);
-        tft.print("\n");
+        tft.setCursor(0,15*i);
     }
-    tft.print("\n");
 }
 
 // Displays initial restaurant list
@@ -166,15 +172,15 @@ void initialDisplay() {
     tft.fillScreen(0x0000);
     tft.setTextSize(2);
     tft.setTextWrap(false);
-    tft.setCursor(0,0);
 
     selectedRest = 0;
-    updateDist();
+    sortRest();
     updateDisplay();
 }
 
 void setup() {
     init();
+    card.init();
     Serial.begin(9600);
 
     // tft display initialization
@@ -199,7 +205,7 @@ void processJoyStick() {
     int yVal = analogRead(JOY_VERT);
     int buttonVal = digitalRead(JOY_SEL);
 
-    if (yVal < JOY_CENTER + JOY_DEADZONE) {
+    if (yVal < JOY_CENTER - JOY_DEADZONE) {
         if (selectedRest > 0) {
             selectedRest -= 1;
         }
@@ -212,7 +218,7 @@ void processJoyStick() {
         updateDisplay();
     }
 
-    if (buttonVal == 1) {
+    if (buttonVal == LOW) {
         // switch to mode 0
     }
 }
