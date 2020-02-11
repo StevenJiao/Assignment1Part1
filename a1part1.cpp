@@ -475,8 +475,8 @@ int main() {
         TSPoint touch = ts.getPoint();
         pinMode(YP, OUTPUT);
         pinMode(XM, OUTPUT);
-        // if the screen is tapped, then show the closest restaurants
-        if (touch.z >= MINPRESSURE) {
+        // if the screen is tapped (leftmost), then show the closest restaurants
+        if ((touch.z >= MINPRESSURE) && (touch.y > (TS_MAXY - TS_MINY)/4)){
           showRest();
         }
 
