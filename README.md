@@ -3,7 +3,7 @@ CCID: 1442672, 1429548
 CMPUT 275, Winter 2019
 Date: 02/10/2020
 Acknowledgements: N/A
-Assignment 1 Part 1
+Assignment 1 Part 1L mode 0 and mode 1
 
 Included Files:
 	* a1part1.cpp
