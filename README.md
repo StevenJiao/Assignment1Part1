@@ -33,4 +33,4 @@ Run instructions:
 Notes:
 	* Mode 0 displays the map and mode 1 displays the restaurant list. Pressing the joystick will switch between the two modes.
 	* Touching the screen when in mode 0 will cause all restaurants in view to appear as black dots.
-	* Clicking the joystick in mode 0 will switch to mode 1, opening a list of the 21 closest restaurants to the cursor. The selected restaurant is highlighted and can be changed by pressing up or down on the joystick. Pressing the joystick again will switch to mode 0, and show the map, centered around the selected retaurant.
+	* Clicking the joystick in mode 0 will switch to mode 1, opening a list of the 21 closest restaurants to the cursor. The selected restaurant is highlighted and can be changed by pressing up or down on the joystick. Pressing the joystick again will switch to mode 0, and show the map centered around the selected retaurant.
