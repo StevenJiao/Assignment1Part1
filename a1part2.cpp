@@ -306,6 +306,33 @@ void sortRest() {
   }
 }
 
+// prints restaurant list
+void restList() {
+  // makes screen black
+  tft.fillScreen(0x0000);
+  // print initial list of restaurants from restaurants stored in memory
+  restaurant rest_temp;
+  // topIndex is lowest multiple of 21 less than or equal to selectedRest
+  int topIndex = selectedRest/21 * 21;
+  // check if list was scrolled back a page
+  int highlightRest = 0;
+  if (selectedRest < highlightIndex) {
+    highlightRest = 20;
+  }
+  for (int16_t i = 0; i < 21; i++) {
+    getRestaurant(rest_dist[topIndex+i].index, &rest_temp);
+    tft.setCursor(0,15*i);
+    // initially highlight first selection
+    // unless the list was scrolled back a page
+    if (i == highlightRest) {
+      tft.setTextColor(0x0000, 0xFFFF);
+    } else {
+      tft.setTextColor(0xFFFF, 0x0000);
+    }
+      tft.print(rest_temp.name);
+  }
+}
+
 // Displays the restaurant list
 void updateHighlight() {
   // temporarily store 64 bit restaurants
@@ -315,13 +342,13 @@ void updateHighlight() {
     // if they're not equal, then change the highlighted line 
     // into non-highlighted
     getRestaurant(rest_dist[highlightIndex].index, &rest_temp);
-    tft.setCursor(0, 15*highlightIndex);
+    tft.setCursor(0, 15*(highlightIndex%21));
     tft.setTextColor(TFT_WHITE, TFT_BLACK);
     tft.print(rest_temp.name);
 
     // highlight the new line of restaurant 
     getRestaurant(rest_dist[selectedRest].index, &rest_temp);
-    tft.setCursor(0, 15*selectedRest);
+    tft.setCursor(0, 15*(selectedRest%21));
     tft.setTextColor(TFT_BLACK, TFT_WHITE);
     tft.print(rest_temp.name);
   }
@@ -338,15 +365,31 @@ void mode1() {
 
   // if the cursor moves up or down, store its position on the scrolling list
   if (yVal < JOY_CENTER - JOY_DEADZONE) {
-      if (selectedRest > 0) {
-          selectedRest -= 1;
-      }
-      // update the highlight 
-      updateHighlight();
+    // topIndex is lowest multiple of 21 less than or equal to selectedRest
+    int prevTopIndex = selectedRest/21 * 21;
+    if (selectedRest > 0) {
+      selectedRest -= 1;
+    }
+    // checks if should load previous page
+    int newTopIndex = selectedRest/21 * 21;
+    if (newTopIndex < prevTopIndex){
+      restList();
+      highlightIndex--;
+    }
+    // update the highlight 
+    updateHighlight();
   }
   else if (yVal > JOY_CENTER + JOY_DEADZONE) {
-      if (selectedRest < 20) {
-          selectedRest += 1;
+    // lowest multiple of 21 less than or equal to selectedRest
+    int prevTopIndex = selectedRest/21 * 21;
+      if (selectedRest < NUM_RESTAURANTS-1) {
+        selectedRest += 1;
+        // checks if should load next page
+        int newTopIndex = selectedRest/21 * 21;
+        if (newTopIndex > prevTopIndex){
+          restList();
+          highlightIndex++;
+        }
       }
       updateHighlight();
   }
@@ -492,28 +535,17 @@ void setupMode0() {
 // setup specific for mode1
 void setupMode1() {
   // initial setup of the screen and text size
-  tft.fillScreen(0x0000);
   tft.setTextSize(2);
   tft.setTextWrap(false);
 
   // make the index start from the top
   selectedRest = 0;
+  highlightIndex = 0;
   // get the list of restaurants, and sort them
   sortRest();
 
   // print initial list of restaurants from restaurants stored in memory
-  restaurant rest_temp;
-  for (int16_t i = 0; i < 21; i++) {
-    getRestaurant(rest_dist[i].index, &rest_temp);
-    tft.setCursor(0,15*i);
-    //initially highlight first selection
-    if (i == 0) {
-      tft.setTextColor(0x0000, 0xFFFF);
-    } else {
-      tft.setTextColor(0xFFFF, 0x0000);
-    }
-      tft.print(rest_temp.name);
-  }
+  restList();
 }
 
 // redraw the map using the cursor and edmonton image positions
