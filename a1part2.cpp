@@ -374,7 +374,7 @@ void mode1() {
     int newTopIndex = selectedRest/21 * 21;
     if (newTopIndex < prevTopIndex){
       restList();
-      highlightIndex--;
+      highlightIndex -= 1;
     }
     // update the highlight 
     updateHighlight();
@@ -388,7 +388,7 @@ void mode1() {
         int newTopIndex = selectedRest/21 * 21;
         if (newTopIndex > prevTopIndex){
           restList();
-          highlightIndex++;
+          highlightIndex += 1;
         }
       }
       updateHighlight();
