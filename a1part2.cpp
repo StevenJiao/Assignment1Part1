@@ -5,7 +5,7 @@ CCID: 1442672, 1429548
 CMPUT 275, Winter 2019
 Date: 02/08/2020
 Acknowledgements: N/A
-Assignment 1 Part 1: mode 0 and 1
+Assignment 1 Part 2: Full Version of Restaurant Finder
 
 */
 
@@ -306,7 +306,7 @@ void sortRest() {
   }
 }
 
-// prints restaurant list
+// prints list of 21 restaurants
 void restList() {
   // makes screen black
   tft.fillScreen(0x0000);
@@ -333,7 +333,7 @@ void restList() {
   }
 }
 
-// Displays the restaurant list
+// updates which restaurant is highlighted and removes highlight if necessary
 void updateHighlight() {
   // temporarily store 64 bit restaurants
   restaurant rest_temp;
