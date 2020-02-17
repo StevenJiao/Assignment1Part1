@@ -29,10 +29,8 @@ MCUFRIEND_kbv tft;
 #define DISPLAY_WIDTH  480
 #define DISPLAY_HEIGHT 320
 #define YEG_SIZE 2048
-
 // dimensions of the part allocated to the map display
 #define MAP_DISP_WIDTH (DISPLAY_WIDTH - 60)
-#define MAP_DISP_HEIGHT DISPLAY_HEIGHT
 
 lcd_image_t yegImage = { "yeg-big.lcd", YEG_SIZE, YEG_SIZE };
 
@@ -52,8 +50,6 @@ lcd_image_t yegImage = { "yeg-big.lcd", YEG_SIZE, YEG_SIZE };
 #define NUM_RESTAURANTS 1066
 
 // These constants are for the 2048 by 2048 map.
-#define MAP_WIDTH 2048
-#define MAP_HEIGHT 2048
 #define LAT_NORTH 5361858l
 #define LAT_SOUTH 5340953l
 #define LON_WEST -11368652l
@@ -91,11 +87,12 @@ int ratingMode = 1;
 
 // made yegMiddleX and yegMiddleY into global variables with 60 bits rightmost 
 // column black on the display
-int yegMiddleX = YEG_SIZE/2 - (DISPLAY_WIDTH - 60)/2;
+int yegMiddleX = YEG_SIZE/2 - MAP_DISP_WIDTH/2;
 int yegMiddleY = YEG_SIZE/2 - DISPLAY_HEIGHT/2;
 
-// the cursor position on the display
-int cursorX, cursorY;
+// the cursor position on the display initially in middle
+int cursorX = MAP_DISP_WIDTH/2; 
+int cursorY = DISPLAY_HEIGHT/2;
 
 // Stores restaurant lat, lon, and rating
 struct restaurant { 
@@ -113,7 +110,7 @@ struct RestDist {
 
 // Stores the restaurants in memory for sorting and displaying
 RestDist rest_dist[NUM_RESTAURANTS];
-// store number of restaurants in the rest_dist 
+// store number of restaurants in the rest_dist with rating threshold 
 uint16_t rest_dist_num = NUM_RESTAURANTS;
 
 // Stores most recent block read from the SD card and it's number for
@@ -133,19 +130,19 @@ int highlightIndex = 0;
 // These functions convert between x/y map poisition and lat/lon
 // (and vice versa.)
 int32_t x_to_lon(int16_t x) {
-    return map(x, 0, MAP_WIDTH, LON_WEST, LONG_EAST);
+    return map(x, 0, YEG_SIZE, LON_WEST, LONG_EAST);
 }
 
 int32_t y_to_lat(int16_t y) {
-    return map(y, 0, MAP_WIDTH, LAT_NORTH, LAT_SOUTH);
+    return map(y, 0, YEG_SIZE, LAT_NORTH, LAT_SOUTH);
 }
 
 int16_t lon_to_x(int32_t lon) {
-    return map(lon, LON_WEST, LONG_EAST, 0, MAP_WIDTH);
+    return map(lon, LON_WEST, LONG_EAST, 0, YEG_SIZE);
 }
 
 int16_t lat_to_y(int32_t lat) {
-    return map(lat, LAT_NORTH, LAT_SOUTH, 0, MAP_HEIGHT);
+    return map(lat, LAT_NORTH, LAT_SOUTH, 0, YEG_SIZE);
 }
 
 // Reads restaurant data from SD card (fast version)
@@ -179,86 +176,118 @@ void iSort(RestDist a[], int n) {
   }
 }
 
+// Actual sorting of quick sort; implemented from pseudocode on ECLASS
 int pivot(RestDist a[], int n, int pi) {
+  // swap the pivot with the last term
   swap(a[pi], a[n-1]);
+  // store high and low index
   int lo = 0;
   int hi = n-2;
 
+  // iterate until lo > hi
   while (lo <= hi) {
+    // if lo index distance is less than or equal to pivot's, move low index up
     if (a[lo].dist <= a[n-1].dist) {
       lo++;
+    // if hi index distance is greater than pivot's, move high down
     } else if (a[hi].dist > a[n-1].dist) {
       hi--;
+    // else swap high and low 
     } else {
       swap(a[lo], a[hi]);
     }
   }
+  // swap the pivot back into position
   swap(a[lo], a[n-1]);
 
+  // return the new low index
   return lo;
 }
 
+// quick sort implementation using recursion of a RestDist struct 
 void qSort(RestDist a[], int n) {
   // if n <=1 then do nothing
   if (n > 1) {
 
+    // Initial pivot set to be at the half-way point (a little above half)
     int pi = n/2;
 
+    // store the new pivot after pivoting the array
     int new_pi = pivot(a, n, pi);
 
+    // recursively sort the bottom portion before pivot
     qSort(a, new_pi);
+    // recursively sort top portion after pivot
     qSort(&a[new_pi+1], n-new_pi-1);
   }
 }
 
+// converts ratings of restaurants from rating/10 to rating/5
 int ratingConverter(int outOfTen) {
+  // floor division
   int outOfFive = (outOfTen + 1)/2;
+  // if equals 0, return 1
   if (outOfFive == 0) {
     return 1;
+  // else return the rating/5
   } else {
     return outOfFive;
   }
 }
 
+// Insertion sorting of the RestDist array and also timing iSort
 void sortByInsertion() {
+  // first, go through all the restaurants stored on the SD card
   // temporarily store the 64 bit restaurant
   restaurant rest_temp;
+  // set the index of the RestDist struct to 0
   uint16_t restIndex = 0;
+  // initialize rating 
   int rating;
+  // first, go through all the restaurants stored on the SD card
   for (int16_t i = 0; i < NUM_RESTAURANTS; i++) {
     getRestaurant(i, &rest_temp);
+    // get the rating of the i'th restaurant
     rating = ratingConverter(rest_temp.rating);
+
+    // if its rating is above threshold currently set, store it 
     if (rating >= ratingMode) {
       // Calculates Manhatten distance d((x1,y1),(x2,y2)) = |x1-x2| + |y1-y2|
       rest_dist[restIndex].dist = abs(lon_to_x(rest_temp.lon) - (yegMiddleX + cursorX))
       + abs(lat_to_y(rest_temp.lat) - (yegMiddleY + cursorY));
       // store the index of the restaurant distance
       rest_dist[restIndex].index = i;
-      // restaurant was added
+      // increase the index of the rest_dist array
       restIndex++;
     }
   }
 
+  // if the total restaurants above threshold is not the one stored, change it
   if (restIndex != rest_dist_num) {
     rest_dist_num = restIndex;
   }
 
+  // Getting ready to print the running time
+  Serial.print("InsertionSort running time of ");
+  Serial.print(rest_dist_num);
+  Serial.print(" restaurants: ");
   // get initial run-time
   unsigned long initialTimer = millis();
+
   // sort by insertion sort
   iSort(rest_dist, rest_dist_num);
+
   // print the running time
-  Serial.print("InsertionSort running time of ");
-  Serial.print(restIndex);
-  Serial.print(" restaurants: ");
   Serial.print(millis() - initialTimer);
   Serial.println(" ms");
 }
 
+// Quick sorting of RestDist array and also timing qSort
 void sortByQuick() {
+  // below is the same code as in "sortByInsertion()" for getting restaurants
   // temporarily store the 64 bit restaurant
   restaurant rest_temp;
-  // store the restaurant count
+  // store the index of rest_dist 
   uint16_t restIndex = 0;
   int rating;
   for (int16_t i = 0; i < NUM_RESTAURANTS; i++) {
@@ -270,7 +299,6 @@ void sortByQuick() {
       + abs(lat_to_y(rest_temp.lat) - (yegMiddleY + cursorY));
       // store the index of the restaurant distance
       rest_dist[restIndex].index = i;
-      // restaurant was added
       restIndex++;
     }
   }
@@ -279,21 +307,24 @@ void sortByQuick() {
     rest_dist_num = restIndex;
   }
 
+  // Getting ready to print the running time
+  Serial.print("QuickSort running time of ");
+  Serial.print(rest_dist_num);
+  Serial.print(" restaurants: ");
   // get initial run-time
   unsigned long initialTimer = millis();
-  // sort by quick sort
+
+  // sort by insertion sort
   qSort(rest_dist, rest_dist_num);
-  // print the running time 
-  Serial.print("QuickSort running time of ");
-  Serial.print(restIndex);
-  Serial.print(" restaurants: ");
+
+  // print the running time
   Serial.print(millis() - initialTimer);
   Serial.println(" ms");
 }
 
-// Sorts restaurants by closest manhattan distance
+// Implements which sort to use depending on the sorting mode chosen
 void sortRest() {
-  // depending on sorting algo chosen, sort the restaurants and time it
+  // sorts by sorting algo currently set in sortMode
   if (sortMode == QSORT) {
     sortByQuick();
   } else if (sortMode == ISORT) {
@@ -309,7 +340,7 @@ void sortRest() {
 // prints list of 21 restaurants
 void restList() {
   // makes screen black
-  tft.fillScreen(0x0000);
+  tft.fillScreen(TFT_BLACK);
   // print initial list of restaurants from restaurants stored in memory
   restaurant rest_temp;
   // topIndex is lowest multiple of 21 less than or equal to selectedRest
@@ -325,9 +356,9 @@ void restList() {
     // initially highlight first selection
     // unless the list was scrolled back a page
     if (i == highlightRest) {
-      tft.setTextColor(0x0000, 0xFFFF);
+      tft.setTextColor(TFT_BLACK, TFT_WHITE);
     } else {
-      tft.setTextColor(0xFFFF, 0x0000);
+      tft.setTextColor(TFT_WHITE, TFT_BLACK);
     }
       tft.print(rest_temp.name);
   }
@@ -403,6 +434,7 @@ void redrawCursor(uint16_t colour) {
   tft.fillRect(cursorX - CURSOR_SIZE/2, cursorY - CURSOR_SIZE/2,
                CURSOR_SIZE, CURSOR_SIZE, colour);
 }
+
 // setup pertaining to both mode 0 and 1
 void setupMain() {
 	init();
@@ -443,6 +475,7 @@ void setupMain() {
 	tft.fillScreen(TFT_BLACK);
 }
 
+// Prints which button is selected
 void printSortButton(char toPrint[]) {
   for (int i = 0; i < 5; i++) {
     tft.setCursor(MAP_DISP_WIDTH + 25, DISPLAY_HEIGHT * 6/10 + (i * 23));
@@ -450,11 +483,13 @@ void printSortButton(char toPrint[]) {
   }
 }
 
+// prints the sorting buttons depending on which one is selected
 void updateSortUI() {
-  // text settings for black background and size
+  // set text settings for black background and size
   tft.setTextColor(TFT_WHITE, TFT_BLACK); 
   tft.setTextSize(3);
 
+  // temporarily store char to print to not take up excessive memory
   if (sortMode == QSORT) {
     char printSort[] = "QSORT";
     printSortButton(printSort);
@@ -467,6 +502,7 @@ void updateSortUI() {
   }
 }
 
+// scrolls through the different sorting modes if called
 void changeSort() {
   if (sortMode == QSORT) {
     sortMode = ISORT;
@@ -475,17 +511,22 @@ void changeSort() {
   } else if (sortMode == BOTH) {
     sortMode = QSORT;
   }
+  // after, update the UI
   updateSortUI();
 }
 
+// updates the rating button UI
 void updateRatingUI() {
+  // set the cursor to specified settings for printing
   tft.setCursor(MAP_DISP_WIDTH + 25, DISPLAY_HEIGHT/10 + (2 * 23));
   tft.setTextColor(TFT_WHITE, TFT_BLACK); 
   tft.setTextSize(3);
 
+  // then, print the rating mode its in
   tft.print(ratingMode); 
 }
 
+// scrolls through the ratings if called
 void changeRating() {
   if (ratingMode == 1) {
     ratingMode = 2;
@@ -498,21 +539,21 @@ void changeRating() {
   } else if (ratingMode == 5) {
     ratingMode = 1;
   }
+  // then, update the UI with new rating
   updateRatingUI();
 }
 
 // draw the initial UI on the TFT display for the buttons to the right
-// part 2 implementation
 void drawInitialButtonUI() {
   // fill the rightmost button to "erase" previous stuff
   tft.fillRect(MAP_DISP_WIDTH, 0, 60, DISPLAY_HEIGHT, TFT_BLACK);
   // draw top rectangle button on right side
-  tft.drawRect(MAP_DISP_WIDTH, 0, 60, DISPLAY_HEIGHT/2,TFT_RED);
+  tft.drawRect(MAP_DISP_WIDTH, 0, 60, DISPLAY_HEIGHT/2,TFT_BLUE);
   // draw bottom rectangle button
   tft.drawRect(MAP_DISP_WIDTH, DISPLAY_HEIGHT/2, 60, DISPLAY_HEIGHT/2,TFT_RED);
 
+  // draw the buttons 
   updateRatingUI();
-
   updateSortUI();
 }
 
@@ -523,11 +564,11 @@ void setupMode0() {
 
   // draws the centre of the Edmonton map
   lcd_image_draw(&yegImage, &tft, yegMiddleX, yegMiddleY,
-                 0, 0, DISPLAY_WIDTH - 60, DISPLAY_HEIGHT);
+                 0, 0, MAP_DISP_WIDTH, DISPLAY_HEIGHT);
 
-  // initial cursor position is the middle of the screen
-  cursorX = (DISPLAY_WIDTH - 60)/2;
-  cursorY = DISPLAY_HEIGHT/2;
+  // place cursor at position
+  // cursorX = MAP_DISP_WIDTH/2;
+  // cursorY = DISPLAY_HEIGHT/2;
 
   redrawCursor(TFT_RED);
 }
@@ -577,14 +618,14 @@ void checkMoveMap() {
   	} else if ((cursorX < CURSOR_SIZE/2) && (yegMiddleX > 0)) {
 
     	hasMoved = true;
-      yegMiddleX = yegMiddleX - (DISPLAY_WIDTH - 60);
+      yegMiddleX = yegMiddleX - MAP_DISP_WIDTH;
 
     // if cursor is at right of LCD display
-  	} else if ((cursorX > (DISPLAY_WIDTH - 60 - CURSOR_SIZE/2)) 
-  					&& (yegMiddleX < (YEG_SIZE - DISPLAY_WIDTH - 60))) {
+  	} else if ((cursorX > (MAP_DISP_WIDTH - CURSOR_SIZE/2)) 
+  					&& (yegMiddleX < (YEG_SIZE - MAP_DISP_WIDTH))) {
 
 	    hasMoved = true;
-      yegMiddleX = yegMiddleX + (DISPLAY_WIDTH - 60);
+      yegMiddleX = yegMiddleX + MAP_DISP_WIDTH;
   
   	}
 
@@ -592,12 +633,12 @@ void checkMoveMap() {
   	if (hasMoved) {
   		// constrain the coordinates to 0 and the maximum size of the YEG 
   		// picture size subtracting the size of the LCD screen
-  		yegMiddleX = constrain(yegMiddleX, 0, (YEG_SIZE - DISPLAY_WIDTH - 60));
+  		yegMiddleX = constrain(yegMiddleX, 0, (YEG_SIZE - MAP_DISP_WIDTH));
   		yegMiddleY = constrain(yegMiddleY, 0, (YEG_SIZE - DISPLAY_HEIGHT));
   		lcd_image_draw(&yegImage, &tft, yegMiddleX, yegMiddleY,
-                 0, 0, DISPLAY_WIDTH - 60, DISPLAY_HEIGHT);
+                 0, 0, MAP_DISP_WIDTH, DISPLAY_HEIGHT);
   		
-  		cursorX = (DISPLAY_WIDTH - 60)/2;
+  		cursorX = MAP_DISP_WIDTH/2;
   		cursorY = DISPLAY_HEIGHT/2;
   	}
 }
@@ -628,7 +669,7 @@ void mode0() {
     }
   }
 
-  // remember the x-reading increases as we push left
+  // x-reading increases as we push left
   if (xVal > JOY_CENTER + JOY_DEADZONE) {
     if (xVal < JOY_CENTER + JOY_DEADZONE + 350) {
       cursorX -= 3; 
@@ -652,7 +693,7 @@ void mode0() {
   // hard-coded in -1 for both the upper-bounds of cursorX and Y due to 
   // int division of CURSOR_SIZE not giving the exact pixels needed
   cursorX = constrain(cursorX, CURSOR_SIZE/2, 
-    DISPLAY_WIDTH - 61 - CURSOR_SIZE/2);
+    MAP_DISP_WIDTH - 1 - CURSOR_SIZE/2);
   cursorY = constrain(cursorY, CURSOR_SIZE/2, 
   	DISPLAY_HEIGHT - CURSOR_SIZE/2 - 1);
 
@@ -674,19 +715,61 @@ void showRest() {
   sortRest();
   // get restaurant name from the SD card
   restaurant rest_temp;
-  // look for all restaurants thats within the maximum manhattan distance 
-  for (int i = 0; i < rest_dist_num && 
-          (rest_dist[i].dist < (MAP_DISP_WIDTH/2 + MAP_DISP_HEIGHT/2)); i++) {
+  // for storing x and y LCD positions of the restaurants
+  uint16_t xLCDPos;
+  uint16_t yLCDPos;
+
+  // look for all restaurants in rest_dist thats within the screen 
+  // and only getRestaurant of the ones within the vicinity
+  for (unsigned int i = 0; (i < rest_dist_num) 
+          && (rest_dist[i].dist < (MAP_DISP_WIDTH + DISPLAY_HEIGHT)); i++) {
+
     getRestaurant(rest_dist[i].index, &rest_temp);
-    // draw a black circle at the restaurant
-    tft.fillCircle(lon_to_x(rest_temp.lon) - (yegMiddleX),
-      lat_to_y(rest_temp.lat) - (yegMiddleY), CURSOR_SIZE/3, TFT_BLACK);
+
+    // get the x and y coordinates relative to LCD screen of current restaurant
+    xLCDPos = lon_to_x(rest_temp.lon) - (uint16_t) yegMiddleX;
+    yLCDPos = lat_to_y(rest_temp.lat) - (uint16_t) yegMiddleY;
+
+    // if its within the left-most screen, draw a circle 
+    if ((xLCDPos > 0) && (xLCDPos < MAP_DISP_WIDTH) 
+          && (yLCDPos > 0) && (yLCDPos < DISPLAY_HEIGHT)){
+      // draw a black circle at the restaurant
+      tft.fillCircle(xLCDPos, yLCDPos, CURSOR_SIZE/3, TFT_BLACK);
+    }
   }
 }
 
-// runs either mode 0 or 1 
+// implements the movement of the cursor to the restaurant selected in mode1
+// as well as taking care of the 2 boundary cases
+void movetoRest() {
+  // get the selected restaurant's lat and lon for mapping 
+  restaurant rest_temp;
+  getRestaurant(rest_dist[selectedRest].index, &rest_temp);
+
+  // map screen to position to the restaurant selected with cursor in middle
+  yegMiddleX = lon_to_x(rest_temp.lon) - MAP_DISP_WIDTH/2;
+  yegMiddleY = lat_to_y(rest_temp.lat) - DISPLAY_HEIGHT/2;
+
+  // constrain the map so we don't go off the yeg map
+  yegMiddleX = constrain(yegMiddleX, 0, (YEG_SIZE - MAP_DISP_WIDTH));
+  yegMiddleY = constrain(yegMiddleY, 0, (YEG_SIZE - DISPLAY_HEIGHT));
+
+  // map cursor to the restaurant 
+  cursorX = lon_to_x(rest_temp.lon) - yegMiddleX;
+  cursorY = lat_to_y(rest_temp.lat) - yegMiddleY;
+
+  // constrain the cursor to the lcd screen size
+  cursorX = constrain(cursorX, CURSOR_SIZE/2, 
+    MAP_DISP_WIDTH - 1 - CURSOR_SIZE/2);
+  cursorY = constrain(cursorY, CURSOR_SIZE/2, 
+    DISPLAY_HEIGHT - CURSOR_SIZE/2 - 1);
+
+}
+
+// main program that runs either mode 0 or 1 along with handling 
+// screen touches and joy-stick pushing 
 void runProgram() {
-  // check if in mode 0 or 1; mode0 is true
+  // check if in mode 0 or 1; mode0 is true and initally set to this
   bool isMode0 = true;
 
   if (isMode0 == true) {
@@ -711,9 +794,11 @@ void runProgram() {
         } else if ((touch.y < (TS_MAXY - TS_MINY)/4) && (touch.x > 500)) {
           changeRating();
         }
+        // slow down the scrolling of ratings and sorting 
         delay(300);
       }
 
+      // run mode0
       mode0();
 
       // if the button is pressed, go to mode 1
@@ -723,25 +808,25 @@ void runProgram() {
     }
   }
 
-  // run mode 1
+  // check if we're in mode 1 
   if (isMode0 == false) {
     setupMode1();
 
-    while(isMode0 != true) {
-
+    while(isMode0 == false) {
+      // run mode1
       mode1();
 
       // if the button is pressed, set the coordinates so we run mode 0 
       // and have the cursor at the selected restaurant
       if (digitalRead(JOY_SEL) == LOW) {
-        restaurant rest_temp;
-        getRestaurant(rest_dist[selectedRest].index, &rest_temp);
-
-        yegMiddleX = lon_to_x(rest_temp.lon) - (DISPLAY_WIDTH - 60)/2;;
-        yegMiddleY = lat_to_y(rest_temp.lat) - (DISPLAY_HEIGHT/2);
+        // move to the restaurant
+        movetoRest();
+        
         // go back to mode 0
         isMode0 = true;
       }
+      // control scroll speed
+      delay(100);
     }
   }
 }
@@ -750,7 +835,7 @@ int main() {
   // main setup
 	setupMain();
 
-
+  // loop the main program
 	while (true) {
     runProgram();
   }
