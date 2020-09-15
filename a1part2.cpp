@@ -1,7 +1,7 @@
 /*
 
 Name: Steven Jiao, Tyler Mah
-CCID: 1442672, 1429548
+CCID: -,-
 CMPUT 275, Winter 2019
 Date: 02/08/2020
 Acknowledgements: N/A
